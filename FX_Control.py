@@ -14,7 +14,7 @@
 # 0 = Compressor on level 1 (Reaper channel 10 FX 2)
 # 1 = Compressor on level 2 (Reaper channel 10 FX 3)
 # 2 = Mid and centre boost (Reaper channel 10 FX 4 & 5)
-# 3 = Comp exceeded by 6dB
+# 3 = Signal > -50.0dB
 # 4 = Comp exceeded by 12dB
 
 
@@ -33,9 +33,15 @@ EQFXindex = 3 # Zero bazsed EQ indexe
 WidthFXindex = 4 # Zero bazsed stereo width index
 
 threshold = 0.0
-yellThreshold = 14.0
 redThreshold = 20.0
 rms = 0.0
+
+yellThreshold = -50.0
+yellOnDelay = 3 # 5 cycles at approx 10Hz = 0.3 sec
+yellOffDelay = 600  # 1200 cycles at approx 10Hz = 60 sec
+yellOnCount = 0
+yellOffCount = 0
+yellLED = False
 
 state = 0
 maskSent = False
@@ -51,21 +57,11 @@ inputStr = ""
 timeout = 0.01
 port_name = "COM3"  # Replace with your actual COM port
 baud_rate = 19200
-
-try:
-    ser = serial.Serial(
-        port=port_name,
-        baudrate=baud_rate,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS,
-        timeout=timeout)
-except:
-    pass
-
+ser = None
 
 def openPort():
     try:
+        global ser
         ser = serial.Serial(
             port=port_name,
             baudrate=baud_rate,
@@ -76,9 +72,10 @@ def openPort():
     except:
         pass
 
-#openPort()
+openPort()
 
 def serLoop():
+    global ser
     global state
     global maskSent
     global outputs
@@ -93,11 +90,17 @@ def serLoop():
     global redThreshold
     global yellThreshold
     global rms
+    global yellOnDelay
+    global yellOffDelay
+    global yellOnCount
+    global yellOffCount
+    global yellLED
     
     # Is serial defined?
     serDefined = True
     try:
         ser
+        ser.isOpen
     except:
         serDefined = False
 
@@ -137,11 +140,23 @@ def serLoop():
                 else:
                     # Should really have the main limiter here...
                     threshold = -20.0
-                yellLED = rms > (threshold + yellThreshold)
+                # Red LED indicatees compressing
                 redLED = rms  > (threshold + redThreshold)
-                outputs[3] = yellLED
                 outputs[4] = redLED
-
+                # Yellow LED indicates signal
+                if (rms > yellThreshold) and not yellLED:
+                    yellOnCount += 1
+                    if yellOnCount >= yellOnDelay:
+                        yellLED = True
+                else:
+                    yellOnCount = 0
+                if (rms < yellThreshold) and yellLED:
+                    yellOffCount += 1
+                    if yellOffCount >= yellOffDelay:
+                        yellLED = False
+                else:
+                    yellOffCount = 0
+                outputs[3] = yellLED
                 # Send state to outputs
                 outputVal = 0
                 if outputs[4]:
@@ -240,9 +255,14 @@ def serLoop():
     else:
         maskSent = False
         state = 0
+        try:
+            ser.close()
+        except:
+            pass
         openPort()
         
     RPR_defer("serLoop()")  # Schedule next run 
 
 serLoop()
+
 
