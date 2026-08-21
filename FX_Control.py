@@ -140,7 +140,7 @@ def serLoop():
                 else:
                     # Should really have the main limiter here...
                     threshold = -20.0
-                # Red LED indicatees compressing
+                # Red LED indicates compressing
                 redLED = rms  > (threshold + redThreshold)
                 outputs[4] = redLED
                 # Yellow LED indicates signal
