@@ -38,7 +38,7 @@ rms = 0.0
 
 yellThreshold = -50.0
 yellOnDelay = 3 # 5 cycles at approx 10Hz = 0.3 sec
-yellOffDelay = 600  # 1200 cycles at approx 10Hz = 60 sec
+yellOffDelay = 3000  # 3000 cycles at approx 10Hz = 5 minutes
 yellOnCount = 0
 yellOffCount = 0
 yellLED = False
